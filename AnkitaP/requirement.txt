@@ -1,0 +1,8 @@
+List of the tools Used in the NGS analysis
+1. Fastqc
+2. Multiqc
+3. Fastp
+4. Bwa
+5. Samtools
+6. Freebayes
+7. Bcftools
