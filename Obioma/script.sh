@@ -77,9 +77,10 @@ for smp in "${SAMPLES[@]}"; do
 done
 
 #Index sorted bam
-samtools index -M mapping/*.sorted.bam
+samtools index -b mapping/*.sorted.bam
 
 # Variant calling for ERR8774458_
+sudo apt-get install bcftools
 bcftools mpileup -Ou -f "ref/Reference.fasta" "mapping/ERR8774458_.sorted.bam" | \
   bcftools call -Ov -mv > "vcf/ERR8774458_.vcf"
 
