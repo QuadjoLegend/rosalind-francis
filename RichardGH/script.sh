@@ -68,9 +68,6 @@ for smp in "${SAMPLES[@]}"; do
     samtools view -b -S -o "mapping/${smp}.bam" "mapping/${smp}.sam"
 done
 
-#Delete sam files
-
-
 #Sort bam files
 for smp in "${SAMPLES[@]}"; do
     samtools sort \
