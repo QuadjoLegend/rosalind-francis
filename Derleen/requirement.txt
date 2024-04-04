@@ -1,0 +1,11 @@
+
+The tools used in the pipeline are:
+
+wget: Command-line utility for downloading files from the web.
+gzip: Compression and decompression tool for files in gzip format.
+fastqc: Quality control tool for high-throughput sequencing data, providing detailed reports for sequence reads.
+multiqc: Tool for aggregation and visualization of quality control metrics from multiple bioinformatics analyses into a single report.
+fastp: Preprocessing tool for fastq files, providing filtering, trimming, and quality control functionalities.
+bwa: For mapping low-divergent sequences against a large reference genome.
+samtools: For interacting with high-throughput sequencing data in SAM (Sequence Alignment/Map) format, including file conversion, manipulation, and analysis.
+bcftools: For variant calling and manipulation of VCF (Variant Call Format) files, used in genetic variant discovery and analysis
