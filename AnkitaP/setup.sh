@@ -1,6 +1,8 @@
+#!/bin/bash
 
 #These are the tools that can be used to do NGS analysis.
 #These tools can be downloaded through bioconda channel
+
 #Install the Fastqc
 conda install -c bioconda fastqc
 
@@ -17,12 +19,6 @@ conda install -c bioconda bwa
 #Install the samtools
 conda install -c bioconda samtools
 
-#install the Freebayes
-conda install -c bioconda freebayes
 
 #Install the bcftools 
 conda install -c bioconda bcftools
-
-
-
-

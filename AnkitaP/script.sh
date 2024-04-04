@@ -1,73 +1,97 @@
-#Activating the conda base environment
-conda init
-#Activating the funtools environment
-conda activate funtools
-#To view the packages installed
-conda list
+#!/bin/bash
+
+#To create the folders
+mkdir Datasets ref qc trim trimmedqc alignment VCF 
+
+#To download the datasets
+wget -P ./Datasets https://zenodo.org/records/10426436/files/ERR8774458_1.fastq.gz
+wget -P ./Datasets https://zenodo.org/records/10426436/files/ERR8774458_2.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/ACBarrie_R1.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/ACBarrie_R2.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Alsen_R1.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Alsen_R2.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Baxter_R1.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Baxter_R2.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Chara_R1.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Chara_R2.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Drysdale_R1.fastq.gz
+wget -P ./Datasets https://github.com/josoga2/yt-dataset/raw/main/dataset/raw_reads/Drysdale_R2.fastq.gz
+ 
+#To download the reference files
+wget -P ./ref https://zenodo.org/records/10886725/files/Reference.fasta
+wget -P ./ref https://raw.githubusercontent.com/josoga2/yt-dataset/main/dataset/raw_reads/reference.fasta
 
 
-#Create a Data folder to keep the Dataset    
-mkdir Data
+#To run the fastqc for quality control
+fastqc ./datasets/*.fastq.gz --outdir qc
+echo "QC completed,outputs were saved in the qc folder."
 
-#To view the folders,files in the given folder  
-ls
 
-#To get inside the  'Data' folder
-cd Data 
+samples=("ACBarrie_R" "Alsen_R" "Baxter_R" "Chara_R" "Drysdale_R" "ERR8774458_")
 
-#Download the Fasta files of  the given  Genome Sequences and the reference sequence from the  link
-wget https://zenodo.org/records/10426436/files/ERR8774458_1.fastq.gz
-wget https://zenodo.org/records/10426436/files/ERR8774458_2.fastq.gz
-wget https://zenodo.org/records/10886725/files/Reference.fasta
+for smp in "${samples[@]}"; do
+  fastp \
+    -i "Datasets/${smp}1.fastq.gz" \
+    -I "Datasets/${smp}2.fastq.gz" \
+    -o "trim/${smp}1_trim.fastp.gz" \
+    -O "trim/${smp}2_trim.fastp.gz" \
+    --html "qc/${smp}_fastp.html" \
+    --json "qc/${smp}_fastp.json"
+done
+ 
+#To run the fastqc again on the trimmed reads to vie the quailty of the reads 
+fastqc trim/*.fastp.gz --outdir trimmedqc
 
-#To check the downloaded files
-ls
-#To  do a Quality check  by using fastqc tool
-fastqc ERR8774458_1.fastq.gz  ERR8774458_2.fastq.gz
+#To Index reference files
+bwa index ref/reference.fasta
+samtools faidx ref/reference.fasta
+bwa index ref/Reference.fasta
+samtools faidx ref/Reference.fasta
 
-#To create a folder  named 'Ref' for the reference data file.
-mkdir Ref
-#Moving the Reference file from current directory to the 'Ref' folder.
-mv Reference.fasta /root/Ref
+echo "Now performing the bwa(alignment) on trimmed reads"
+bwa mem \
+  "ref/Reference.fasta" \
+  "trim/ERR8774458_1_trim.fastp.gz" \
+  "trim/ERR8774458_2_trim.fastp.gz" \
+  > "alignment/ERR8774458_.sam"
 
-#Multiqc is a summary report of the genome sequences
-multiqc ERR8774458_1_fastqc.zip   ERR8774458_2_fastqc.zip
+for smp in "${samples[@]}"; do
+  if [ "$smp" != "ERR8774458_" ]; then
+    bwa mem \
+      "ref/reference.fasta" \
+      "trim/${smp}1_trim.fastp.gz" \
+      "trim/${smp}2_trim.fastp.gz" \
+      > "alignment/${smp}.sam"
+  fi
+done
 
-# Fastp is a tool used for read quality control , filtering and adapter trimmming.
-fastp -i ERR8774458_1.fastq -I ERR8774458_2.fastq -o ERR8774458_trimmed_1.fastq -O ERR8774458_trimmed_2.fastq
+#To Convert sam file into bam fileformat
+for smp in "${samples[@]}"; do
+    samtools view -b -S -o "alignment/${smp}.bam" "alignment/${smp}.sam"
+done
 
-#It is used to create  an index of a reference genome.
-#This index helps in the faster performance of the sequence alignment against the reference genome during the mapping process.
-bwa index /root/Ref/Reference.fasta
-#This performs fast & accurate alignment of sequencing reads to  a reference genome.
-bwa mem Reference.fasta ERR8774458_trimmed_1.fastq ERR8774458_trimmed_2.fastq > Alignment.sam
 
-#Samtools is used to convert sam file into bam fileformat.
-samtools view -bS Alignment.sam > Alignment.bam
+#To Sort the bam files
+for smp in "${samples[@]}"; do
+    samtools sort \
+        "alignment/${smp}.bam" \
+        -o "alignment/${smp}.sorted.bam"
+done
 
-#Create a folder Bam to keep the bam files
-mkdir Bam
 
-#This'flagstat'command gives the summary statistics about alignments in a Bam file.
-samtools  flagstat   Alignment.bam
-#This'sort'command sorts alignments in a BAM file by their coordinates,so improve the efficiency for downstream analysis. 
-samtools sort Alignment.bam -o Alignment_sorted.bam
-#It is used to create  an index of a reference genome.
-samtools index Alignment_sorted.bam
-#This'flagstat'command gives the summary statistics about alignments in a sorted Bam file.
-samtools  flagstat   Alignment.sorted.bam
+#To Index sorted bam file
+samtools index -M alignment/*.sorted.bam
 
-#Create a folder'VCF'for the vcf files.
-mkdir VCF
-#Using freebayes to analyze the the alignments in the BAM file against the reference genome and detect the variants in the output vcf fileformat.
-freebayes  -f   /root/Ref/Reference.fasta  -b   /root/Bams/Alignment_sorted.bam  --vcf /root/VCF/Alignment.vcf
-#To compress the vcf file 
-bgzip   /root/VCF/Alignment.vcf
-# Bcftools is used to analyze the variants , SNPs , indels.
-#to create an index forthe vcf file. 
-bcftools index /root/VCF/Alignment.vcf.gz
-#To view the SNPs(single nucleotide polymorphisms) and indels(insertions and deletions) in the vcf file.
-#This will not include the lines starting from'#'
-bcftools view -v snps   /root/VCF/Alignment.vcf.gz|grep  -v  -c  '^#'
-bcftools view -v indels  /root/VCF/Alignment.vcf.gz|grep -v   -c   '^#'
+
+#To run the Variant calling only for ERR8774458_
+bcftools mpileup -Ou -f "ref/Reference.fasta" "alignment/ERR8774458_.sorted.bam" | \
+  bcftools call -Ov -mv > "VCF/ERR8774458_.vcf"
+
+#To run the Variant calling for other samples
+for smp in "${samples[@]}"; do
+  if [ "$smp" != "ERR8774458_" ]; then
+    bcftools mpileup -Ou -f "ref/reference.fasta" "alignment/${smp}.sorted.bam" | \
+      bcftools call -Ov -mv > "VCF/${smp}.vcf"
+  fi
+done
 
