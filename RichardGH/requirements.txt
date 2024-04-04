@@ -1,0 +1,15 @@
+System requirement:
+-Linux
+-MacOS
+
+Tools
+-FastQC v0.11.9
+-fastp 0.23.4
+-bwa 0.7.17
+-samtools 1.19
+-bcftools 1.19
+-conda 24.1.2
+
+Files
+links.txt
+ref.txt
