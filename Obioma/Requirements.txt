@@ -1,0 +1,10 @@
+System requirement:
+-Windows
+-Linux
+
+Tools
+-FastQC v0.11.9 
+-fastp 0.20.1
+-bwa 0.7.17
+-samtools 1.19
+-bcftools 1.19
