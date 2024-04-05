@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Creating needed directories...
-mkdir datasets ref vcf mapping qc trim trimmedqc
+mkdir datasets ref vcf mapping qc trim trimmedqc repaired
 
 #Downloading the datasets...
 wget -P ./datasets https://zenodo.org/records/10426436/files/ERR8774458_1.fastq.gz
@@ -22,23 +22,33 @@ wget -P ./ref https://zenodo.org/records/10886725/files/Reference.fasta
 wget -P ./ref https://raw.githubusercontent.com/josoga2/yt-dataset/main/dataset/raw_reads/reference.fasta
 
 #Performing Quality Controls...
-fastqc ./datasets/*.fastq.gz --outdir qc
+fastqc datasets/*.fastq.gz --outdir qc
 echo "QC complete, output saved in qc directory."
 
 SAMPLES=("ACBarrie_R" "Alsen_R" "Baxter_R" "Chara_R" "Drysdale_R" "ERR8774458_")
 
+# Repair raw reads
+for smp in "${SAMPLES[@]}"; do
+    repair.sh \
+      in1="datasets/${smp}1.fastq.gz" \
+      in2="datasets/${smp}2.fastq.gz" \
+      out1="repaired/${smp}1_rep.fastq.gz" \
+      out2="repaired/${smp}2_rep.fastq.gz"
+done
+
+#Trim repaired reads
 for smp in "${SAMPLES[@]}"; do
   fastp \
-    -i "datasets/${smp}1.fastq.gz" \
-    -I "datasets/${smp}2.fastq.gz" \
-    -o "trim/${smp}1_trim.fastp.gz" \
-    -O "trim/${smp}2_trim.fastp.gz" \
-    --html "qc/${smp}_fastp.html" \
-    --json "qc/${smp}_fastp.json"
+    -i "repaired/${smp}1_rep.fastq.gz" \
+    -I "repaired/${smp}2_rep.fastq.gz" \
+    -o "trim/${smp}1_trim_rep.fastq.gz" \
+    -O "trim/${smp}2_trim_rep.fastq.gz" \
+    --html "qc/${smp}_fastq_rep.html" \
+    --json "qc/${smp}_fastq_rep.json"
 done
 
 #Performing qc on trimmed reads...
-fastqc trim/*.fastp.gz --outdir trimmedqc
+fastqc trim/*rep.fastq.gz --outdir trimmedqc
 
 #Indexing reference files...
 bwa index ref/reference.fasta
@@ -49,16 +59,16 @@ samtools faidx ref/Reference.fasta
 echo "Performing allignments on trimmed reads..."
 bwa mem \
   "ref/Reference.fasta" \
-  "trim/ERR8774458_1_trim.fastp.gz" \
-  "trim/ERR8774458_2_trim.fastp.gz" \
+  "trim/ERR8774458_1_trim_rep.fastq.gz" \
+  "trim/ERR8774458_2_trim_rep.fastq.gz" \
   > "mapping/ERR8774458_.sam"
 
 for smp in "${SAMPLES[@]}"; do
   if [ "$smp" != "ERR8774458_" ]; then
     bwa mem \
       "ref/reference.fasta" \
-      "trim/${smp}1_trim.fastp.gz" \
-      "trim/${smp}2_trim.fastp.gz" \
+      "trim/${smp}1_trim_rep.fastq.gz" \
+      "trim/${smp}2_trim_rep.fastq.gz" \
       > "mapping/${smp}.sam"
   fi
 done
@@ -67,6 +77,9 @@ done
 for smp in "${SAMPLES[@]}"; do
     samtools view -b -S -o "mapping/${smp}.bam" "mapping/${smp}.sam"
 done
+
+#Delete sam files
+
 
 #Sort bam files
 for smp in "${SAMPLES[@]}"; do
@@ -92,3 +105,4 @@ done
 
 
 echo "Pipeline created by Richard Agyekum"
+

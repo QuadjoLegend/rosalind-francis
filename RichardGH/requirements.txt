@@ -9,3 +9,4 @@ Tools
 -samtools 1.19
 -bcftools 1.19
 -conda 24.1.2
+-bbtools 37.62

@@ -1,0 +1,7 @@
+Files I have used (Versions I have used):
+
+FastQC (FastQC v0.11.9)
+FastP (fastp 0.20.0)
+BWA (bwa 0.7.17-4)
+Samtools (samtools 1.19.2)
+bcftools (bcftools 1.19)
